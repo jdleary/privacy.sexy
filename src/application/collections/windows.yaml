@@ -2777,7 +2777,10 @@ actions:
                       Language models susceptibility to attacks like prompt engineering underlines its security risks [8].
                       More about security vulnerabilities: [Attacks on language models](https://erkinekici.com/articles/attacks-on-language-models/).
 
-                    This script configures the `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot!DisableAIDataAnalysis` registry key [6].
+                    This script configures the `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI!DisableAIDataAnalysis` registry key [6].
+                    Earlier preview documentation placed this policy under the `WindowsCopilot` key; shipping Windows 11 24H2+ builds read it
+                    from the `WindowsAI` key, and this script sets both for compatibility.
+                    It additionally sets `AllowRecallEnablement` to `0`, the policy Windows 11 24H2+ uses to block Recall from being enabled [3].
 
                     By running this script, you enhance your privacy by preventing the storage and analysis of snapshots on your device [6],
                     thereby mitigating the associated risks.
@@ -2791,13 +2794,63 @@ actions:
                     [7]: https://web.archive.org/web/20240523155006/https://www.bbc.com/news/articles/cpwwqp6nx14o "Microsoft Copilot+ Recall feature 'privacy nightmare' | www.bbc.com"
                     [8]: https://erkinekici.com/articles/attacks-on-language-models/ "Attacks on language models :: Erkin Ekici | erkinekici.com"
                 call:
+                    -
+                        # Current policy location used by shipping Windows 11 24H2+ builds
+                        function: SetRegistryValue
+                        parameters:
+                            keyPath: HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI
+                            valueName: DisableAIDataAnalysis
+                            dataType: REG_DWORD
+                            data: "1"
+                            deleteOnRevert: 'true'
+                    -
+                        # Legacy policy location from preview documentation, kept for compatibility
+                        function: SetRegistryValue
+                        parameters:
+                            keyPath: HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot
+                            valueName: DisableAIDataAnalysis
+                            dataType: REG_DWORD
+                            data: "1"
+                            deleteOnRevert: 'true' # Missing by default since Windows 10 Pro (≥ 22H2) and Windows 11 Pro (≥ 23H2)
+                    -
+                        # Windows 11 24H2+ policy that prevents Recall from being enabled at all
+                        function: SetRegistryValue
+                        parameters:
+                            keyPath: HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI
+                            valueName: AllowRecallEnablement
+                            dataType: REG_DWORD
+                            data: "0"
+                            deleteOnRevert: 'true'
+            -
+                name: Disable Click to Do
+                recommend: strict
+                docs: |-
+                    This script disables the Click to Do feature.
+
+                    Click to Do is an AI feature on Copilot+ PCs running Windows 11 24H2 and later [1].
+                    When invoked, it captures a snapshot of your screen and analyzes on-screen text and
+                    images so you can act on them (copy, search, summarize, rewrite) [1].
+
+                    Like Recall, it processes potentially sensitive on-screen content, such as private
+                    messages, documents, or financial information. Disabling it reduces the amount of
+                    screen content that is captured and analyzed on your device.
+
+                    This script configures the `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI!DisableClickToDo`
+                    registry key, the supported enterprise policy for disabling this feature [2].
+
+                    On systems without Copilot+ hardware, this feature is not active; applying the policy is
+                    harmless and protects you if the hardware or a future update enables it.
+
+                    [1]: https://learn.microsoft.com/en-us/windows/client-management/manage-windows-copilot#click-to-do "Manage AI features in Windows | Microsoft Learn"
+                    [2]: https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-windowsai#disableclicktodo "WindowsAI Policy CSP - Windows Client Management | Microsoft Learn"
+                call:
                     function: SetRegistryValue
                     parameters:
-                        keyPath: HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot
-                        valueName: DisableAIDataAnalysis
+                        keyPath: HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI
+                        valueName: DisableClickToDo
                         dataType: REG_DWORD
                         data: "1"
-                        deleteOnRevert: 'true' # Missing by default since Windows 10 Pro (≥ 22H2) and Windows 11 Pro (≥ 23H2)
+                        deleteOnRevert: 'true'
             -
                 category: Disable app access to personal information
                 docs: |- # refactor-with-variables: Same • App Access Caution
@@ -32682,6 +32735,131 @@ actions:
                             parameters:
                                 packageName: Microsoft.GroupMe10 # Get-AppxPackage Microsoft.GroupMe10
                                 publisherId: kzf8qxf38zg5c
+                    -
+                        name: Remove "Microsoft Teams" app
+                        docs: |-
+                            This script uninstalls the "Microsoft Teams" app (package `MSTeams`), the unified Teams client
+                            that comes pre-installed on Windows 11 [1].
+
+                            ⚠️ This is the same app used for **work or school (Microsoft 365) accounts**.
+                            If you use Teams for work, do not remove it, or reinstall it from the Microsoft Store when needed.
+
+                            ### Overview of default preinstallation
+
+                            | OS | Version | Existence |
+                            | -- |:-------:|:---------:|
+                            | Windows 10 | 22H2 | ❌ |
+                            | Windows 11 | 22H2 | ✅ |
+                            | Windows 11 | 23H2 | ✅ |
+                            | Windows 11 | 24H2 | ✅ |
+
+                            [1]: https://learn.microsoft.com/en-us/microsoftteams/new-teams-vdi-requirements-deploy "New Microsoft Teams client | Microsoft Learn"
+                        call:
+                            function: UninstallStoreApp
+                            parameters:
+                                packageName: MSTeams # Get-AppxPackage MSTeams
+                                publisherId: 8wekyb3d8bbwe
+                    -
+                        name: Remove "Microsoft Teams (personal)" chat app (outdated)
+                        recommend: standard # Consumer chat app replaced by unified Teams; no longer distributed
+                        docs: |-
+                            This script uninstalls the legacy "Microsoft Teams (personal)" app (package `MicrosoftTeams`).
+                            It powered the "Chat" taskbar feature on early Windows 11 versions [1].
+                            Microsoft replaced it with the unified Teams app (package `MSTeams`) and removed the Chat feature in later updates [1].
+
+                            ### Overview of default preinstallation
+
+                            | OS | Version | Existence |
+                            | -- |:-------:|:---------:|
+                            | Windows 10 | 22H2 | ❌ |
+                            | Windows 11 | 21H2 | ✅ |
+                            | Windows 11 | 22H2 | ✅ |
+                            | Windows 11 | 23H2 | ❌ |
+                            | Windows 11 | 24H2 | ❌ |
+
+                            [1]: https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features "Deprecated features for Windows client | Microsoft Learn"
+                        call:
+                            function: UninstallStoreApp
+                            parameters:
+                                packageName: MicrosoftTeams # Get-AppxPackage MicrosoftTeams
+                                publisherId: 8wekyb3d8bbwe
+                    -
+                        name: Remove "Clipchamp" video editor app
+                        recommend: standard # Bundled third-party-origin video editor; safe to remove, reinstallable from Store
+                        docs: |-
+                            This script uninstalls the "Microsoft Clipchamp" video editor app.
+
+                            Clipchamp is a cloud-connected video editor that Microsoft acquired in 2021.
+                            It comes pre-installed on Windows 11 since version 22H2 [1].
+                            It requires signing in and uploads project assets to cloud services for some features,
+                            which may be undesirable for privacy-conscious users.
+
+                            It can be reinstalled from the Microsoft Store at any time.
+
+                            ### Overview of default preinstallation
+
+                            | OS | Version | Existence |
+                            | -- |:-------:|:---------:|
+                            | Windows 10 | 22H2 | ❌ |
+                            | Windows 11 | 21H2 | ❌ |
+                            | Windows 11 | 22H2 | ✅ |
+                            | Windows 11 | 23H2 | ✅ |
+                            | Windows 11 | 24H2 | ✅ |
+
+                            [1]: https://blogs.windows.com/windowsexperience/2022/09/20/available-today-the-windows-11-2022-update/ "Available today: The Windows 11 2022 Update | Windows Experience Blog"
+                        call:
+                            function: UninstallStoreApp
+                            parameters:
+                                packageName: Clipchamp.Clipchamp # Get-AppxPackage Clipchamp.Clipchamp
+                                publisherId: yxz26nhyzhsrt
+                    -
+                        name: Remove "Dev Home" app (deprecated)
+                        recommend: standard # Deprecated by Microsoft in 2025; developer dashboard most users never open
+                        docs: |-
+                            This script uninstalls the "Dev Home" app.
+
+                            Dev Home is a developer dashboard app that Microsoft pre-installed on Windows 11
+                            starting with version 23H2 [1]. Microsoft announced its deprecation in 2025 and is
+                            no longer developing it [2].
+
+                            ### Overview of default preinstallation
+
+                            | OS | Version | Existence |
+                            | -- |:-------:|:---------:|
+                            | Windows 10 | 22H2 | ❌ |
+                            | Windows 11 | 22H2 | ❌ |
+                            | Windows 11 | 23H2 | ✅ |
+                            | Windows 11 | 24H2 | ✅ |
+
+                            [1]: https://learn.microsoft.com/en-us/windows/dev-home/ "Dev Home | Microsoft Learn"
+                            [2]: https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features "Deprecated features for Windows client | Microsoft Learn"
+                        call:
+                            function: UninstallStoreApp
+                            parameters:
+                                packageName: Microsoft.Windows.DevHome # Get-AppxPackage Microsoft.Windows.DevHome
+                                publisherId: 8wekyb3d8bbwe
+                    -
+                        name: Remove "LinkedIn" app
+                        recommend: standard # Third-party social app pre-installed on newer Windows 11 builds
+                        docs: |-
+                            This script uninstalls the "LinkedIn" app.
+
+                            The LinkedIn app is a social networking client that Microsoft pre-installs
+                            on some newer Windows 11 installations. Removing it reduces potential
+                            data collection points; the LinkedIn website remains fully usable in any browser.
+
+                            ### Overview of default preinstallation
+
+                            | OS | Version | Existence |
+                            | -- |:-------:|:---------:|
+                            | Windows 10 | 22H2 | ❌ |
+                            | Windows 11 | 23H2 | ❌ |
+                            | Windows 11 | 24H2 | ✅ |
+                        call:
+                            function: UninstallStoreApp
+                            parameters:
+                                packageName: 7EE7776C.LinkedInforWindows # Get-AppxPackage 7EE7776C.LinkedInforWindows
+                                publisherId: w1wdnht996qgy
                     -
                         name: Remove "Windows Sound Recorder" app
                         docs: |-
