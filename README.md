@@ -1,6 +1,37 @@
-# privacy.sexy — Privacy is sexy
+# TESLA-privacy — privacy.sexy fork for Windows 11 Pro
 
 > Enforce privacy & security best-practices on Windows, macOS and Linux, because privacy is sexy.
+
+## About this fork
+
+This is a maintained fork of [privacy.sexy](https://github.com/undergroundwires/privacy.sexy) (via [Angry-Joe/privacy.sexy](https://github.com/Angry-Joe/privacy.sexy)), focused on **debloating and privacy-hardening Windows 11 Pro** machines. Upstream development stalled in April 2025; this fork updates the Windows script collection for current Windows 11 builds (24H2+).
+
+### Fork changes (2026-07)
+
+- **Fixed "Disable Recall"** — upstream wrote the `DisableAIDataAnalysis` policy to the pre-release `WindowsCopilot` registry key, which shipping Windows 11 24H2+ builds ignore. The script now writes the current `WindowsAI` policy key (keeping the legacy key for compatibility) and additionally sets `AllowRecallEnablement = 0`, the supported 24H2+ policy that blocks Recall entirely.
+- **New script: "Disable Click to Do"** — disables the Copilot+ screen-capture/AI-analysis feature via the supported `DisableClickToDo` policy.
+- **New Windows 11 app-removal scripts** (none existed upstream):
+  - Microsoft Teams (`MSTeams`, the unified client — documented warning that work/school Teams uses the same package)
+  - Microsoft Teams (personal) chat app (`MicrosoftTeams`, the legacy Windows 11 "Chat" app)
+  - Clipchamp video editor
+  - Dev Home (deprecated by Microsoft in 2025)
+  - LinkedIn
+- Validated against the project's own collection-parsing test suite (1,330 integration tests passing).
+
+### Using this fork
+
+There is no hosted instance of this fork. Run it locally to generate your script:
+
+```bash
+git clone https://github.com/Digital-Reign/TESLA-privacy.git
+cd TESLA-privacy
+npm run install-deps
+npm run dev
+```
+
+Then open the printed localhost URL, choose **Standard** (safe debloat + privacy) or cherry-pick scripts, and download/run the generated `.bat` file **as administrator**. Review the generated script before running it — every entry documents what it does and how to revert it. The original project documentation below still applies.
+
+---
 
 <!-- markdownlint-disable MD033 -->
 <p align="center">
